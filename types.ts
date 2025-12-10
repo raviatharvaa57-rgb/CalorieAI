@@ -15,6 +15,7 @@ export interface FoodItem {
   source?: string;
   alternatives?: string[];
   imageUrl?: string;
+  sourceUrls?: { title: string; url: string }[];
 }
 
 export interface LoggedMeal {

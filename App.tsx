@@ -492,6 +492,25 @@ const ResultCard = ({ result, onSave, onDiscard, imageUri }: { result: FoodItem,
             </div>
           </div>
 
+          {result.sourceUrls && result.sourceUrls.length > 0 && (
+            <div className="mb-6">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Sources</h4>
+              <div className="flex flex-wrap gap-2">
+                {result.sourceUrls.map((source, index) => (
+                  <a 
+                    key={index} 
+                    href={source.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md hover:underline truncate max-w-full"
+                  >
+                    {source.title}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-3">
             <button 
               onClick={onDiscard}
@@ -1006,7 +1025,7 @@ const NotesView = ({
   onDeleteNote 
 }: { 
   notes: PersonalNote[], 
-  onAddNote: (content: string) => void,
+  onAddNote: (content: string) => void, 
   onDeleteNote: (id: string) => void 
 }) => {
   const [newNote, setNewNote] = useState('');
@@ -1097,14 +1116,77 @@ const NotesView = ({
 // --- Main App Component ---
 
 export default function App() {
-  const [view, setView] = useState<AppView>(AppView.SIGN_IN);
-  const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
-  const [dailyLog, setDailyLog] = useState<LoggedMeal[]>([]);
+  // Initialize state from localStorage
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('calorieai_user');
+      return saved ? JSON.parse(saved) : DEFAULT_PROFILE;
+    }
+    return DEFAULT_PROFILE;
+  });
+
+  const [dailyLog, setDailyLog] = useState<LoggedMeal[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('calorieai_logs');
+      if (saved) {
+        try {
+          return JSON.parse(saved).map((log: any) => ({
+            ...log,
+            timestamp: new Date(log.timestamp)
+          }));
+        } catch (e) {
+          console.error("Failed to parse logs", e);
+          return [];
+        }
+      }
+    }
+    return [];
+  });
+
+  const [notes, setNotes] = useState<PersonalNote[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('calorieai_notes');
+      if (saved) {
+        try {
+          return JSON.parse(saved).map((note: any) => ({
+            ...note,
+            timestamp: new Date(note.timestamp)
+          }));
+        } catch (e) { return []; }
+      }
+    }
+    return [];
+  });
+
+  const [view, setView] = useState<AppView>(() => {
+    if (typeof window !== 'undefined') {
+      const savedUser = localStorage.getItem('calorieai_user');
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        if (parsed.isOnboarded) return AppView.DASHBOARD;
+        if (parsed.name) return AppView.ONBOARDING; // Mid-onboarding
+      }
+    }
+    return AppView.SIGN_IN;
+  });
+
   const [currentResult, setCurrentResult] = useState<FoodItem | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(false);
-  const [notes, setNotes] = useState<PersonalNote[]>([]);
+
+  // Persistence Effects
+  useEffect(() => {
+    localStorage.setItem('calorieai_user', JSON.stringify(userProfile));
+  }, [userProfile]);
+
+  useEffect(() => {
+    localStorage.setItem('calorieai_logs', JSON.stringify(dailyLog));
+  }, [dailyLog]);
+
+  useEffect(() => {
+    localStorage.setItem('calorieai_notes', JSON.stringify(notes));
+  }, [notes]);
 
   // Handlers
   const handleSignIn = (email: string, password?: string) => {
@@ -1112,7 +1194,13 @@ export default function App() {
     // Simulate API call
     setTimeout(() => {
       setIsLoadingAuth(false);
-      setView(AppView.ONBOARDING);
+      // If we already have a profile from local storage but were on sign in screen (unlikely unless manual reset), use it.
+      // Otherwise, assume new session.
+      if (userProfile.isOnboarded) {
+        setView(AppView.DASHBOARD);
+      } else {
+        setView(AppView.ONBOARDING);
+      }
     }, 1500);
   };
   
@@ -1121,7 +1209,7 @@ export default function App() {
     // Simulate API call for sign up
     setTimeout(() => {
       setIsLoadingAuth(false);
-      setUserProfile({ ...userProfile, name: data.name });
+      setUserProfile({ ...DEFAULT_PROFILE, name: data.name });
       setView(AppView.ONBOARDING);
     }, 1500);
   };
@@ -1129,6 +1217,17 @@ export default function App() {
   const handleOnboardingComplete = () => {
     setUserProfile({ ...userProfile, isOnboarded: true });
     setView(AppView.DASHBOARD);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('calorieai_user');
+    localStorage.removeItem('calorieai_logs');
+    localStorage.removeItem('calorieai_notes');
+    
+    setUserProfile(DEFAULT_PROFILE);
+    setDailyLog([]);
+    setNotes([]);
+    setView(AppView.SIGN_IN);
   };
 
   const handleImageAnalysis = async (file: File) => {
@@ -1218,7 +1317,7 @@ export default function App() {
         return <DashboardView 
           userProfile={userProfile} 
           dailyLog={dailyLog} 
-          onLogout={() => setView(AppView.SIGN_IN)} 
+          onLogout={handleLogout} 
           onScanClick={() => setView(AppView.SCANNER)} 
           onSearchClick={() => setView(AppView.SEARCH)}
           onResetDay={handleResetDay}
@@ -1235,7 +1334,7 @@ export default function App() {
         return <DashboardView 
           userProfile={userProfile} 
           dailyLog={dailyLog} 
-          onLogout={() => setView(AppView.SIGN_IN)} 
+          onLogout={handleLogout} 
           onScanClick={() => setView(AppView.SCANNER)} 
           onSearchClick={() => setView(AppView.SEARCH)}
           onResetDay={handleResetDay}

@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { FoodItem } from '../types';
 
@@ -125,7 +126,16 @@ export const analyzeTextQuery = async (query: string): Promise<FoodItem> => {
     const text = response.text;
     if (!text) throw new Error("No response from AI");
     
-    return cleanAndParseJSON(text);
+    const foodItem = cleanAndParseJSON(text);
+
+    // Extract sources
+    if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
+      foodItem.sourceUrls = response.candidates[0].groundingMetadata.groundingChunks
+        .map((chunk: any) => chunk.web ? { title: chunk.web.title, url: chunk.web.uri } : null)
+        .filter((item: any) => item !== null) as { title: string, url: string }[];
+    }
+
+    return foodItem;
 
   } catch (error) {
     console.error("Gemini Text Analysis Error:", error);
@@ -166,7 +176,17 @@ export const analyzeRecipe = async (input: string): Promise<FoodItem> => {
 
     const text = response.text;
     if (!text) throw new Error("No response from AI");
-    return cleanAndParseJSON(text);
+    
+    const foodItem = cleanAndParseJSON(text);
+
+    // Extract sources
+    if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
+      foodItem.sourceUrls = response.candidates[0].groundingMetadata.groundingChunks
+        .map((chunk: any) => chunk.web ? { title: chunk.web.title, url: chunk.web.uri } : null)
+        .filter((item: any) => item !== null) as { title: string, url: string }[];
+    }
+
+    return foodItem;
 
   } catch (error) {
     console.error("Gemini Recipe Analysis Error:", error);
