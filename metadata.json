@@ -1,6 +1,6 @@
 {
   "name": "CalorieAI",
-  "description": "Real-time personal calorie assistant powered by AI. Snap, type, or ask to instantly track nutrition. ",
+  "description": "Real-time personal calorie assistant powered by AI. Snap, type, or ask to instantly track nutrition.",
   "requestFramePermissions": [
     "camera"
   ]

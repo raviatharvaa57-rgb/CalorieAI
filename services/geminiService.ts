@@ -1,5 +1,6 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
-import { FoodItem } from '../types';
+import { FoodItem, UserProfile } from '../types';
 
 // Use process.env.API_KEY as strictly instructed.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -190,6 +191,54 @@ export const analyzeRecipe = async (input: string): Promise<FoodItem> => {
   } catch (error) {
     console.error("Gemini Recipe Analysis Error:", error);
     throw error;
+  }
+};
+
+export const generateMealNoteSuggestion = async (foodItem: FoodItem): Promise<string> => {
+  try {
+    const model = 'gemini-2.5-flash';
+    // Prompt for a short, first-person note
+    const prompt = `Generate a very short (max 15 words), personal, encouraging, or reflective journal note for a user who just ate ${foodItem.name}.
+    It should be written in the first person (e.g., "I feel...", "Great source of...", "Enjoyed this...").
+    Do not include quotes.`;
+
+    const response = await ai.models.generateContent({
+      model: model,
+      contents: prompt,
+    });
+
+    return response.text?.trim() || `Enjoyed a delicious ${foodItem.name}!`;
+  } catch (error) {
+    console.error("Note suggestion error:", error);
+    return ""; // Return empty string on failure, UI will handle
+  }
+};
+
+export const generateDailyInsight = async (userProfile: UserProfile): Promise<{title: string, message: string}> => {
+  try {
+    const model = 'gemini-2.5-flash';
+    const prompt = `Generate a short, friendly, and motivating daily notification for a user named ${userProfile.name}.
+    They have a daily goal of ${userProfile.dailyCalorieGoal} calories.
+    
+    Return STRICTLY JSON:
+    {
+      "title": "Short Title (e.g. Daily Tip)",
+      "message": "One sentence message max 20 words."
+    }`;
+
+    const response = await ai.models.generateContent({
+      model: model,
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
+    });
+
+    const text = response.text;
+    if (!text) return { title: "Daily Tip", message: "Stay consistent and hydrate today!" };
+    
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Insight generation error:", error);
+    return { title: "Welcome Back", message: "Ready to track your meals today?" };
   }
 };
 

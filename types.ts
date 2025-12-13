@@ -23,14 +23,27 @@ export interface LoggedMeal {
   timestamp: Date;
   item: FoodItem;
   imageUri?: string; // Data URL
+  note?: string; // Personal note for this specific meal
+}
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'system' | 'update' | 'insight' | 'alert';
+  timestamp: Date;
+  isRead: boolean;
 }
 
 export interface UserProfile {
+  email?: string; // Unique identifier for the user
   name: string;
   dailyCalorieGoal: number;
   weight: number;
   height: number; // in cm
   isOnboarded: boolean;
+  isBiometricEnabled?: boolean;
+  isAiSuggestionsEnabled?: boolean;
 }
 
 export interface PersonalNote {
@@ -54,4 +67,5 @@ export enum AppView {
   SEARCH = 'SEARCH',
   RECIPE = 'RECIPE',
   NOTES = 'NOTES',
+  SETTINGS = 'SETTINGS',
 }
